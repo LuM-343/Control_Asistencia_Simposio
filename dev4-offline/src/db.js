@@ -25,13 +25,18 @@ export function registrarCheckin(carnet, dia, puerta) {
 }
 
 // Carga la lista del servidor SIN borrar los ingresos ya marcados en este celular
-export async function cargarPadron(lista) {
+// Guarda el padrón en el celular sin perder los ingresos ya marcados aquí.
+// ingresos: [{ carnet, dia }] ya registrados en el servidor (otras puertas).
+export async function cargarPadron(lista, ingresos = []) {
+  const yaEntro = new Set(ingresos.map(i => `${i.carnet}-${i.dia}`));
   await db.transaction('rw', db.estudiantes, async () => {
-    const locales = await db.estudiantes.bulkGet(lista.map(e => e.carnet));
-    await db.estudiantes.bulkPut(lista.map((e, i) => ({
-      ...e,
-      dia1: locales[i]?.dia1 || e.dia1 || false,
-      dia2: locales[i]?.dia2 || e.dia2 || false
-    })));
+    const actuales = await db.estudiantes.bulkGet(lista.map(e => e.carnet));
+    const filas = lista.map((e, i) => ({
+      carnet: e.carnet,
+      nombre: e.nombre,
+      dia1: Boolean(actuales[i]?.dia1 || yaEntro.has(`${e.carnet}-1`)),
+      dia2: Boolean(actuales[i]?.dia2 || yaEntro.has(`${e.carnet}-2`)),
+    }));
+    await db.estudiantes.bulkPut(filas);
   });
 }

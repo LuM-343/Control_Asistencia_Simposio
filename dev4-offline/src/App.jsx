@@ -4,6 +4,7 @@ import { db, registrarCheckin } from './db';
 import { sincronizarCola, iniciarSincronizacion } from './sync/sync';
 import { verificarQr } from './qr/verificarQr';
 import { TOKEN_VALIDO, TOKEN_VENCIDO } from './qr/tokensPrueba';
+import { descargarPadron } from './sync/padron';
 
 const CARNET_PRUEBA = '2026-0001';
 const DIA_PRUEBA = 2;
@@ -61,6 +62,10 @@ export default function App() {
       <pre>{log.join('\n')}</pre>
       <h3>Cola en vivo</h3>
       <pre>{JSON.stringify(cola, null, 2)}</pre>
+      <button onClick={async () => {
+        try { alert(JSON.stringify(await descargarPadron())); }
+        catch (e) { alert('Error: ' + e.message); }
+      }}>Cargar padrón</button>
     </div>
   );
 }
