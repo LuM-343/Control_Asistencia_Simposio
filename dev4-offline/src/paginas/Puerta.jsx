@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, borrarDatosLocales } from '../db';
+import { db, borrarDatosLocales, protegerAlmacenamiento } from '../db';
 import { leerAjustes, guardarAjustes } from '../config';
-import { descargarPadron } from '../sync/padron';
+import { descargarPadron, actualizarPadronSiHaceFalta } from '../sync/padron';
 import { sincronizarCola } from '../sync/sync';
 import { procesarEscaneo } from '../qr/escanear';
 import { TOKEN_VALIDO } from '../qr/tokensPrueba';
@@ -27,6 +27,17 @@ export default function Puerta() {
   const [token, setToken] = useState('');
   const [resultado, setResultado] = useState(null);
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
+  const [protegido, setProtegido] = useState(null);
+
+  // Al abrir: protege la base local y mantiene el padrón al día (al reconectar y cada 10 min)
+  useEffect(() => {
+    protegerAlmacenamiento().then(setProtegido);
+    const actualizar = () => actualizarPadronSiHaceFalta().then(r => { if (r) setAjustes(leerAjustes()); });
+    actualizar();
+    window.addEventListener('online', actualizar);
+    const timer = setInterval(actualizar, 60000);
+    return () => { window.removeEventListener('online', actualizar); clearInterval(timer); };
+  }, []);
 
   const totalPadron = useLiveQuery(() => db.estudiantes.count(), [], 0);
   const pendientes = useLiveQuery(() => db.cola_checkins.where('sincronizado').equals(0).count(), [], 0);
@@ -116,8 +127,11 @@ export default function Puerta() {
         <h2>Padrón</h2>
         <p className="tenue">
           {ajustes.ultimaDescarga ? `Última descarga: ${fecha(ajustes.ultimaDescarga)} ·` : 'Todavía no se ha descargado.'}
-          {' '}Descárgalo antes del evento, con internet.
+          {' '}Se actualiza solo cada 10 minutos cuando hay internet. Descárgalo antes del evento.
         </p>
+        {protegido === false && (
+          <p className="tenue">El navegador no garantiza conservar los datos. Instala la app en la pantalla de inicio para protegerlos.</p>
+        )}
         <div className="botones">
           <button className="principal" onClick={descargar} disabled={!enLinea || ocupado}>Descargar padrón</button>
           <button onClick={sincronizar} disabled={ocupado || !pendientes}>Enviar ingresos ahora</button>

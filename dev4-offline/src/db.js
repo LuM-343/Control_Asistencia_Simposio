@@ -53,3 +53,15 @@ export async function borrarDatosLocales() {
   });
   return { ok: true };
 }
+
+// Pide al navegador que no borre la base local (Safari puede borrarla tras días sin uso).
+// Devuelve true si los datos quedaron protegidos.
+export async function protegerAlmacenamiento() {
+  try {
+    if (!navigator.storage?.persist) return false;
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}
