@@ -7,13 +7,23 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Simposio de Ingeniería',
+        name: 'Simposio de Ingeniería · Control de puerta',
         short_name: 'Simposio',
+        description: 'Registro de ingresos del XIX Simposio de Ingeniería, con funcionamiento sin conexión.',
+        lang: 'es',
         display: 'standalone',
+        orientation: 'portrait',
         start_url: '/',
-        background_color: '#ffffff',
-        theme_color: '#123b6d'
+        scope: '/',
+        background_color: '#f2f4f8',
+        theme_color: '#123b6d',
+        icons: [
+          { src: 'icono-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icono-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icono-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+        ]
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
