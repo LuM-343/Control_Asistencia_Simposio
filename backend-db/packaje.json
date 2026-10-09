@@ -1,0 +1,22 @@
+{
+  "name": "backend-db",
+  "version": "1.0.0",
+  "description": "Capa transaccional, esquemas relacionales y procedimientos RPC para el XIX Simposio de Ingeniería",
+  "type": "module",
+  "main": "tests/test_concurrencia.js",
+  "scripts": {
+    "test": "node tests/test_concurrencia.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "keywords": [
+    "supabase",
+    "postgresql",
+    "concurrency",
+    "rpc",
+    "rls"
+  ],
+  "author": "Dev 2",
+  "license": "ISC"
+}
