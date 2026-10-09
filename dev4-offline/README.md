@@ -1,16 +1,46 @@
-# React + Vite
+# Dev 4 · Funcionamiento sin conexión y portal de zona amarilla
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+App web (PWA) del XIX Simposio de Ingeniería. Funciona sin internet en la puerta del evento y envía los ingresos al servidor cuando vuelve la conexión.
 
-Currently, two official plugins are available:
+## Cómo correrla
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+cp .env.example .env.local         # y llenar VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY
+npm run dev                        # desarrollo: http://localhost:5173
+npm run build && npm run preview   # versión instalable (PWA): http://localhost:4173
+```
 
-## React Compiler
+## Pantallas
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Ruta | Para quién | Qué hace |
+|---|---|---|
+| `#/` | Staff en la puerta | Configura operador, puerta y día; descarga el padrón; muestra los ingresos y cuántos faltan por enviar; permite probar un QR pegando su texto. |
+| `#/portal?boleta=B-10232` | Estudiante en zona amarilla | Confirma qué carné corresponde a su boleta. Llama a `resolver_excepcion_estudiante`. Este es el enlace que va en el correo de Dev 5. |
 
-## Expanding the ESLint configuration
+## Función para la pantalla de escaneo (Dev 3)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```js
+import { procesarEscaneo } from './src/qr/escanear';
+
+const r = await procesarEscaneo(textoDelQr);           // usa día, puerta y operador guardados en el celular
+const r = await procesarEscaneo(textoDelQr, 1, '3');   // o se indican a mano
+// r = { ok: true, carnet, nombre }
+//   | { ok: false, motivo: 'qr_invalido' | 'qr_vencido' | 'no_encontrado' | 'ya_ingresado', carnet?, nombre? }
+```
+
+No necesita internet. La sincronización arranca sola dentro de la app (`iniciarSincronizacion`).
+
+## Cómo funciona
+
+1. **Antes del evento (con internet):** se descargan `padron_estudiantes` y los ingresos ya registrados a IndexedDB (Dexie).
+2. **En la puerta (sin internet):** el QR se verifica con la llave pública RS256 de Dev 1 (`src/qr/public_key.pem`), se busca el carné en el padrón local y se revisa que no haya entrado ese día. El ingreso se guarda en `cola_checkins` con un UUID, el operador y la hora real del escaneo.
+3. **Al volver la red:** la cola se envía a `sincronizar_checkins_offline` (al reconectar, al volver a la app y cada 30 s). Solo se marca como enviado lo que el servidor confirma; lo demás se reintenta.
+
+## Archivos
+
+- `src/db.js` · base local, registro de ingresos y carga del padrón
+- `src/config.js` · operador, puerta y día de este celular
+- `src/qr/` · verificación del QR y `procesarEscaneo`
+- `src/sync/` · conexión con Supabase: sincronización, padrón y portal
+- `src/paginas/` · pantallas de puerta y portal
