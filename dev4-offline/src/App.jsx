@@ -1,34 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db, registrarCheckin } from './db';
-import { sincronizarCola } from './sync/sync';
+import { sincronizarCola, iniciarSincronizacion } from './sync/sync';
 import { verificarQr } from './qr/verificarQr';
 import { TOKEN_VALIDO, TOKEN_VENCIDO } from './qr/tokensPrueba';
 
+const CARNET_PRUEBA = '2026-0001';
+const DIA_PRUEBA = 2;
+
 export default function App() {
   const [log, setLog] = useState([]);
+  const cola = useLiveQuery(() => db.cola_checkins.toArray(), []);
+
+  // La sincronización corre sola: al volver la conexión, al volver a la app y cada 30 s
+  useEffect(() => iniciarSincronizacion(), []);
 
   async function probar() {
     await db.estudiantes.clear();
     await db.cola_checkins.clear();
     await db.estudiantes.bulkPut([
-      { carnet: '2021001', nombre: 'Ana María López Hernández', dia1: false, dia2: false }
+      { carnet: CARNET_PRUEBA, nombre: 'Estudiante de prueba', dia1: false, dia2: false }
     ]);
-    const r1 = await registrarCheckin('2021001', 2, 3);
-    const r2 = await registrarCheckin('2021001', 2, 3);
-    const cola = await db.cola_checkins.toArray();
+    const r1 = await registrarCheckin(CARNET_PRUEBA, DIA_PRUEBA, 3);
+    const r2 = await registrarCheckin(CARNET_PRUEBA, DIA_PRUEBA, 3);
     setLog([
       'Primer escaneo: ' + JSON.stringify(r1),
-      'Segundo escaneo: ' + JSON.stringify(r2),
-      'Cola: ' + JSON.stringify(cola, null, 2)
+      'Segundo escaneo: ' + JSON.stringify(r2)
     ]);
   }
 
   async function sincronizar() {
     const res = await sincronizarCola();
-    const cola = await db.cola_checkins.toArray();
+    setLog(['Sincronización: ' + JSON.stringify(res)]);
+  }
+
+  async function probarQr() {
+    const a = await verificarQr(TOKEN_VALIDO);
+    const b = await verificarQr(TOKEN_VENCIDO);
+    const c = await verificarQr(TOKEN_VALIDO.slice(0, -5) + 'abcde');
     setLog([
-      'Sincronización: ' + JSON.stringify(res),
-      'Cola: ' + JSON.stringify(cola, null, 2)
+      'Válido: ' + JSON.stringify(a),
+      'Vencido: ' + JSON.stringify(b),
+      'Alterado: ' + JSON.stringify(c)
     ]);
   }
 
@@ -37,26 +50,17 @@ export default function App() {
     await db.cola_checkins.clear();
     setLog([]);
   }
-  
-  async function probarQr() {
-    const a = await verificarQr(TOKEN_VALIDO);
-    const b = await verificarQr(TOKEN_VENCIDO);
-    const c = await verificarQr(TOKEN_VALIDO.slice(0, -5) + 'abcde'); // firma alterada
-    setLog([
-      'Válido: ' + JSON.stringify(a),
-      'Vencido: ' + JSON.stringify(b),
-      'Alterado: ' + JSON.stringify(c)
-    ]);
-  }
 
   return (
     <div style={{ padding: 24, textAlign: 'left' }}>
       <h1>Prueba de base local</h1>
       <button onClick={probar}>Probar dos escaneos</button>{' '}
       <button onClick={sincronizar}>Sincronizar ahora</button>{' '}
-      <button onClick={reiniciar}>Reiniciar</button>
       <button onClick={probarQr}>Probar QR</button>{' '}
+      <button onClick={reiniciar}>Reiniciar</button>
       <pre>{log.join('\n')}</pre>
+      <h3>Cola en vivo</h3>
+      <pre>{JSON.stringify(cola, null, 2)}</pre>
     </div>
   );
 }
