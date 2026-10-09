@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { cargarPadron } from '../db';
+import { guardarAjustes } from '../config';
 
 const PAGINA = 1000; // Supabase devuelve como máximo 1000 filas por consulta
 
@@ -15,10 +16,10 @@ async function traerTodo(tabla, columnas) {
 
 // Descarga el padrón y los ingresos ya registrados, y los guarda en el celular.
 export async function descargarPadron() {
-  const padron = await traerTodo('padron_estudiantes', '*');
+  const padron = await traerTodo('padron_estudiantes', 'carnet, nombre_oficial');
   const lista = padron.map(e => ({
     carnet: String(e.carnet),
-    nombre: e.nombre ?? e.nombre_completo ?? '',
+    nombre: e.nombre_oficial ?? '',
   }));
 
   let ingresos = [];
@@ -30,5 +31,6 @@ export async function descargarPadron() {
   }
 
   await cargarPadron(lista, ingresos);
+  guardarAjustes({ ultimaDescarga: new Date().toISOString() });
   return { estudiantes: lista.length, ingresos: ingresos.length };
 }
